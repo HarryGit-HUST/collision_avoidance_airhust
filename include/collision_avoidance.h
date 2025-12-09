@@ -18,7 +18,7 @@
 #include <std_msgs/String.h>
 #include <std_msgs/Empty.h>
 #include <std_msgs/Int32.h>
-#include <livox_ros_driver/CustomMsg.h>
+#include <livox_ros_driver2/CustomMsg.h>
 
 using namespace std;
 
@@ -214,7 +214,7 @@ void cal_min_distance()
 
 *************************************************************************/
 
-void livox_custom_cb(const livox_ros_driver::CustomMsg::ConstPtr& livox_msg) {
+void livox_custom_cb(const livox_ros_driver2::CustomMsg::ConstPtr& livox_msg) {
     // 初始化bins
     // ROS_INFO("Received Livox point cloud with %d points", livox_msg->point_num);
     distance_bins.assign(num_bins, max_range);
@@ -225,7 +225,7 @@ void livox_custom_cb(const livox_ros_driver::CustomMsg::ConstPtr& livox_msg) {
     
     // 遍历Livox自定义消息中的点
     for (int i = 0; i < total_points; i++) {
-        const livox_ros_driver::CustomPoint& point = livox_msg->points[i];
+        const livox_ros_driver2::CustomPoint& point = livox_msg->points[i];
         
         float x = point.x;
         float y = point.y;
