@@ -8,7 +8,6 @@
 #endif
 /*复制说明，从第九行开始到119行结束*/
 
-
 /* 点结构体 */
 typedef struct point
 {
@@ -19,8 +18,8 @@ typedef struct point
 /* 线段结构体（segment） */
 typedef struct segment
 {
-    point p1; 
-    point p2; //两点确定一条直线
+    point p1;
+    point p2; // 两点确定一条直线
 } segment;
 
 // 错误码定义
@@ -59,8 +58,8 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     barrier_body.y = dist * sin(angle_rad);
 
     // 2. 机体坐标转世界坐标（补全注释要求的逻辑）
-   
-    barrier_world.x=barrier_body.x + current.x; 
+
+    barrier_world.x = barrier_body.x + current.x;
     barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着
 
     // 3. 计算垂直线交点
