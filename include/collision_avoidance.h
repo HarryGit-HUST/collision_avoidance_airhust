@@ -479,7 +479,7 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     // 2. 机体坐标转世界坐标（补全注释要求的逻辑）
     rotation_yaw(yaw, (float[]){(float)barrier_body.x, (float)barrier_body.y}, (float[]){(float)barrier_world.x, (float)barrier_world.y});//修改注释中的问题，先进行旋转
     barrier_world.x = barrier_body.x + current.x;
-    barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着
+    barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着,已经修改了
 
     // 3. 计算垂直线交点
     segment seg = {current, barrier_world};
