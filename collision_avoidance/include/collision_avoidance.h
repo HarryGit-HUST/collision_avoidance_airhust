@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
@@ -47,23 +48,30 @@ float init_position_y_take_off = 0;
 float init_position_z_take_off = 0;
 float init_yaw_take_off = 0;
 bool flag_init_position = false;
-vector<float> current_pos_x;
-vector<float> current_pos_y;
-vector<float> current_vel_world_x;
-vector<float> current_vel_world_y;
+struct Pos
+{
+    float x;
+    float y;
+};
+struct Vel
+{
+    float x;
+    float y;
+};
+vector<Pos> current_pos;
+vector<Vel> current_vel;
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg);
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 {
 	local_pos = *msg;
 	tf::quaternionMsgToTF(local_pos.pose.pose.orientation, quat);
 	tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
-    current_pos_x.push_back(local_pos.pose.pose.position.x);
-    current_pos_y.push_back(local_pos.pose.pose.position.y);
+    current_pos.push_back(Pos{local_pos.pose.pose.position.x,local_pos.pose.pose.position.y});
     tf::Vector3 body_vel(local_pos.twist.twist.linear.x, local_pos.twist.twist.linear.y, local_pos.twist.twist.linear.z);
     tf::Matrix3x3 rot_matrix(quat);
     tf::Vector3 world_vel = rot_matrix * body_vel;
-    current_vel_world_x.push_back(world_vel.x());
-    current_vel_world_y.push_back(world_vel.y());
+    current_vel.push_back(Vel{world_vel.x(),world_vel.y()});
+
 
 	if (flag_init_position == false && (local_pos.pose.pose.position.z != 0))
 	{
@@ -76,13 +84,11 @@ void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 }
 void time_c_b_pos(const ros::TimerEvent& event);//每隔5秒删除一次储存的位置
 void time_c_b_pos(const ros::TimerEvent& event) {
-    current_pos_x.clear();
-    current_pos_y.clear();
+    current_pos.clear();
 }
 void time_c_b_vel(const ros::TimerEvent& event);//每隔0.5秒删除一次储存的速度
 void time_c_b_vel(const ros::TimerEvent& event) {
-    current_vel_world_x.clear();
-    current_vel_world_y.clear();
+    current_vel.clear();
 }
 /************************************************************************
 函数 3: 无人机位置控制
@@ -402,12 +408,17 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
 输入参数：无人机位置，速度
 返回值：true/false表示是否处于震荡状态
 *************************************************************************/
-std::vector<float> current_pos_x;
-std::vector<float> current_pos_y;
-std::vector<float> current_vel_x;
-std::vector<float> current_vel_y;
-bool stuck_detection();
-bool stuck_detection()
+bool stuck_detection(const vector<Pos> &pos ,const vector<Vel> &vel)
 {
-    
+    int flag = 0;
+    int n1 = pos.size();
+    int n2 = vel.size();
+    int n = (n1>n2)? n2 : n1
+    for(int i = 0 ; i < n ; i ++){
+        for(int j = i + 1 , j < n ; j ++){
+            float dis = hypot(pos.x[i]-pos.x[j],pos.y[i]-pos.y[j]);
+            if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;
+        }
+    }
+    return flag > 3 ;
 }
