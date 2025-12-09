@@ -14,3 +14,6 @@ p_xy : 0.5
 vel_collision_max : 1.0
 vel_track_max : 1.0
 vel_sp_max : 1.5
+
+mission_cruise_timeout : 10.0  # 普通巡航超时阈值（秒）
+collision_cruise_timeout : 25.0 # 避障巡航超时阈值（秒）

@@ -97,6 +97,11 @@ void time_c_b_vel(const ros::TimerEvent& event) {
 *************************************************************************/
 float mission_pos_cruise_last_position_x = 0;
 float mission_pos_cruise_last_position_y = 0;
+// ========== 第七处修改：超时阈值改为可配置变量，设置默认初值 ==========
+float mission_cruise_timeout = 10.0f;     // 普通巡航超时阈值默认值（秒）
+ros::Time mission_cruise_start_time;      // 巡航任务开始时间
+bool mission_cruise_timeout_flag = false; // 巡航超时标志
+// ========== 修改结束 ==========
 bool mission_pos_cruise_flag = false;
 bool mission_pos_cruise(float x, float y, float z, float target_yaw, float error_max);
 bool mission_pos_cruise(float x, float y, float z, float target_yaw, float error_max)
@@ -106,18 +111,33 @@ bool mission_pos_cruise(float x, float y, float z, float target_yaw, float error
 		mission_pos_cruise_last_position_x = local_pos.pose.pose.position.x;
 		mission_pos_cruise_last_position_y = local_pos.pose.pose.position.y;
 		mission_pos_cruise_flag = true;
-	}
-	setpoint_raw.type_mask = /*1 + 2 + 4 */ +8 + 16 + 32 + 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
+        mission_cruise_start_time = ros::Time::now(); // 第七处修改：记录启动时间
+        mission_cruise_timeout_flag = false;          // 第七处修改：重置超时标志
+    }
+    // ========== 第七处修改：巡航超时判断逻辑 ==========
+    ros::Duration elapsed_time = ros::Time::now() - mission_cruise_start_time;
+    if (elapsed_time.toSec() > mission_cruise_timeout && !mission_cruise_timeout_flag)
+    {
+        ROS_WARN("[巡航超时] 已耗时%.1f秒（阈值%.1f秒），强制切换下一个任务！", elapsed_time.toSec(), mission_cruise_timeout);
+        mission_cruise_timeout_flag = true;
+        mission_pos_cruise_flag = false; // 重置任务标志
+        return true;                     // 返回true表示任务完成（超时切换）
+    }
+    // ========== 第七处修改==========
+
+    setpoint_raw.type_mask = /*1 + 2 + 4 */ +8 + 16 + 32 + 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
 	setpoint_raw.coordinate_frame = 1;
 	setpoint_raw.position.x = x + init_position_x_take_off;
 	setpoint_raw.position.y = y + init_position_y_take_off;
 	setpoint_raw.position.z = z + init_position_z_take_off;
 	setpoint_raw.yaw = target_yaw;
 	ROS_INFO("now (%.2f,%.2f,%.2f,%.2f) to ( %.2f, %.2f, %.2f, %.2f)", local_pos.pose.pose.position.x ,local_pos.pose.pose.position.y, local_pos.pose.pose.position.z, target_yaw * 180.0 / M_PI, x + init_position_x_take_off, y + init_position_y_take_off, z + init_position_z_take_off, target_yaw * 180.0 / M_PI );
+    
 	if (fabs(local_pos.pose.pose.position.x - x - init_position_x_take_off) < error_max && fabs(local_pos.pose.pose.position.y - y - init_position_y_take_off) < error_max && fabs(local_pos.pose.pose.position.z - z - init_position_z_take_off) < error_max && fabs(yaw - target_yaw) < 0.1)
 	{
 		ROS_INFO("到达目标点，巡航点任务完成");
-		mission_pos_cruise_flag = false;
+        mission_cruise_timeout_flag = false; // 第七处修改：重置超时标志
+        mission_pos_cruise_flag = false;
 		return true;
 	}
 	return false;
@@ -281,6 +301,14 @@ float vel_sp_ENU[2];                                            //ENU下的总�
 float vel_sp_max;                                               //总速度限幅
 std_msgs::Bool flag_collision_avoidance;                       //是否进入避障模式标志位
 
+// ========== 第七次修改：避障巡航超时阈值==========
+float collision_cruise_timeout = 25.0f;     // 避障巡航超时阈值默认值（秒）
+ros::Time collision_cruise_start_time;      // 避障巡航开始时间
+bool collision_cruise_flag = false;         // 避障巡航初始化标志
+bool collision_cruise_timeout_flag = false; // 避障巡航超时标志
+// ========== 修改结束 ==========
+
+
 void rotation_yaw(float yaw_angle, float input[2], float output[2])
 {
     output[0] = input[0] * cos(yaw_angle) - input[1] * sin(yaw_angle);
@@ -289,6 +317,25 @@ void rotation_yaw(float yaw_angle, float input[2], float output[2])
 
 bool collision_avoidance_mission(float target_x,float target_y,float target_z,float target_yaw,float err_max)
 {
+    // ========== 第七次：避障巡航首次进入初始化计时 ==========
+    if (!collision_cruise_flag)
+    {
+        collision_cruise_start_time = ros::Time::now();
+        collision_cruise_timeout_flag = false;
+        collision_cruise_flag = true;
+        ROS_INFO("[避障巡航] 任务启动，超时阈值%.1f秒", collision_cruise_timeout);
+    }
+    // ========== 第七次：避障巡航超时判断逻辑 ==========
+    ros::Duration elapsed_time = ros::Time::now() - collision_cruise_start_time;
+    if (elapsed_time.toSec() > collision_cruise_timeout && !collision_cruise_timeout_flag)
+    {
+        ROS_WARN("[避障巡航超时] 已耗时%.1f秒（阈值%.1f秒），强制切换下一个任务！", elapsed_time.toSec(), collision_cruise_timeout);
+        collision_cruise_timeout_flag = true;
+        collision_cruise_flag = false; // 重置任务标志
+        return true;                   // 返回true表示任务完成（超时切换）
+    }
+    // ========== 新增结束 ==========
+
     //2. 根据最小距离判断：是否启用避障策略
     if (distance_c >= R_outside )
     {
@@ -401,6 +448,10 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
 
     if(fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
+        // ========== 第七次：避障巡航到达目标点重置超时标志 ==========
+        collision_cruise_flag = false;
+        collision_cruise_timeout_flag = false;
+        // ========== 新增结束 ==========
         return true;
     }
     return false;
@@ -534,6 +585,8 @@ point getCross(segment seg, point point_p, CalcErr *err)
 }
 /*
 使用说明
+
+1.有关计算临时目标点的函数：
 cal_temporary_waypoint(point target, point current, double dist, double angle, CalcErr *err)
 point target: 目标点（世界坐标系）
 需要看一下结构体的定义，传入一对x,y坐标
@@ -542,5 +595,11 @@ double dist: 障碍点相对机体的距离
 double angle: 障碍点相对机体的角度（度）
 CalcErr *err: 输出错误码（CALC_SUCCESS/CALC_INVALID_PARAM）
 返回值: 避障点（世界坐标系）
+
+
+
+2.超时阈值配置说明：
+mission_cruise_timeout: 12.0   # 普通巡航超时阈值（秒）
+collision_cruise_timeout: 18.0 # 避障巡航超时阈值（秒）
 
 */
