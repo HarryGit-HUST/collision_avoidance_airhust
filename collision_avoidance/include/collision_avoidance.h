@@ -47,12 +47,24 @@ float init_position_y_take_off = 0;
 float init_position_z_take_off = 0;
 float init_yaw_take_off = 0;
 bool flag_init_position = false;
+vector<float> current_pos_x;
+vector<float> current_pos_y;
+vector<float> current_vel_world_x;
+vector<float> current_vel_world_y;
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg);
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 {
 	local_pos = *msg;
 	tf::quaternionMsgToTF(local_pos.pose.pose.orientation, quat);
 	tf::Matrix3x3(quat).getRPY(roll, pitch, yaw);
+    current_pos_x.push_back(local_pos.pose.pose.position.x);
+    current_pos_y.push_back(local_pos.pose.pose.position.y);
+    tf::Vector3 body_vel(local_pos.twist.twist.linear.x, local_pos.twist.twist.linear.y, local_pos.twist.twist.linear.z);
+    tf::Matrix3x3 rot_matrix(quat);
+    tf::Vector3 world_vel = rot_matrix * body_vel;
+    current_vel_world_x.push_back(world_vel.x());
+    current_vel_world_y.push_back(world_vel.y());
+
 	if (flag_init_position == false && (local_pos.pose.pose.position.z != 0))
 	{
 		init_position_x_take_off = local_pos.pose.pose.position.x;
@@ -62,8 +74,16 @@ void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 		flag_init_position = true;
 	}
 }
-
-
+void time_c_b_pos(const ros::TimerEvent& event);//每隔5秒删除一次储存的位置
+void time_c_b_pos(const ros::TimerEvent& event) {
+    current_pos_x.clear();
+    current_pos_y.clear();
+}
+void time_c_b_vel(const ros::TimerEvent& event);//每隔0.5秒删除一次储存的速度
+void time_c_b_vel(const ros::TimerEvent& event) {
+    current_vel_world_x.clear();
+    current_vel_world_y.clear();
+}
 /************************************************************************
 函数 3: 无人机位置控制
 控制无人机飞向（x, y, z）位置，target_yaw为目标航向角，error_max为允许的误差范围
@@ -375,4 +395,19 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
     }
     return false;
 
+}
+/************************************************************************
+函数 9: stuck_detection 震荡检测函数
+根据位置回调数据，速度回调判断无人机是否处于震荡状态
+输入参数：无人机位置，速度
+返回值：true/false表示是否处于震荡状态
+*************************************************************************/
+std::vector<float> current_pos_x;
+std::vector<float> current_pos_y;
+std::vector<float> current_vel_x;
+std::vector<float> current_vel_y;
+bool stuck_detection();
+bool stuck_detection()
+{
+    
 }
