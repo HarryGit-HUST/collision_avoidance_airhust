@@ -303,11 +303,16 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
     vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
     vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
-    //速度限幅
-    for (int i = 0; i < 2; i++)
+    //速度限幅，第三处修改，改为对总体速度限幅，并比例缩小,强制合速度为max
+    double vel_combination=hypot(vel_track[0],vel_track[1]);
+    if(vel_combination>vel_sp_max)
     {
-        vel_track[i] = satfunc(vel_track[i],vel_track_max);
+        vel_track[0]=vel_track[0]*vel_sp_max/vel_combination;
+        vel_track[1]=vel_track[1]*vel_sp_max/vel_combination;
     }
+    
+
+
     vel_collision[0]= 0;
     vel_collision[1]= 0;
     ROS_WARN("Velocity Command Body before CA: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
@@ -325,7 +330,7 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
         float F_c;
 
         F_c = 0;
-
+//第四处修改，if else if else结构更清晰
         if(distance_c > R_outside)
         {
             //对速度不做限制
@@ -335,39 +340,32 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
         }
 
         //小幅度抑制移动速度
-        if(distance_c > R_inside && distance_c <= R_outside)
+        else if(distance_c > R_inside)
         {
             F_c = p_R * (R_outside - distance_c);
 
         }
 
         //大幅度抑制移动速度
-        if(distance_c <= R_inside )
+        else 
         {
             F_c = p_R * (R_outside - R_inside) + p_r * (R_inside - distance_c);
         }
         ROS_WARN("Force F_c: %.2f ", F_c);
 
-        if(distance_cx > 0)
+        //第一处修改，修改为更美观的写法！！！！！！！！
+        vel_collision[0] = vel_collision[0] - F_c * distance_cx / distance_c;
+        vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
+      
+        //避障速度限幅，第五处修改，对避障速度限幅同第三处
+        double vel_collision_combination=hypot(vel_collision[0],vel_collision[1]);
+        if(vel_collision_combination>vel_collision_max)
         {
-            vel_collision[0] = vel_collision[0] - F_c * distance_cx /distance_c;
-        }else{
-            vel_collision[0] = vel_collision[0] - F_c * distance_cx /distance_c;
-        }
-
-        if(distance_cy > 0)
-        {
-            vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
-        }else{
-            vel_collision[1] = vel_collision[1] - F_c * distance_cy /distance_c;
-        }
-        //避障速度限幅
-        for (int i = 0; i < 2; i++)
-        {
-            vel_collision[i] = satfunc(vel_collision[i],vel_collision_max);
+            vel_collision[0]=vel_collision[0]*vel_collision_max/vel_collision_combination;
+            vel_collision[1]=vel_collision[1]*vel_collision_max/vel_collision_combination;
         }
     }
-
+    rotation_yaw(yaw, vel_collision,vel_collision); //避障速度转换到机体坐标系,第二处修改，只是角度，而非坐标，相对于机体的角度
     vel_sp_body[0] = vel_track[0] + vel_collision[0];
     vel_sp_body[1] = vel_track[1] + vel_collision[1]; //dyx
 
@@ -378,11 +376,17 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
     //找当前位置到目标点的xy差值，如果出现其中一个差值小，另一个差值大，
     //且过了一会还是保持这个差值就开始从差值入手。
     //比如，y方向接近0，但x还差很多，但x方向有障碍，这个时候按discx cy的大小，缓解y的难题。
+    
 
-    for (int i = 0; i < 2; i++)
+    //第六处修改，总体速度限幅,同第三处
+    double vel_sp_combination=hypot(vel_sp_body[0],vel_sp_body[1]);
+    if(vel_sp_combination>vel_sp_max)
     {
-        vel_sp_body[i] = satfunc(vel_sp_body[i],vel_sp_max);
+        vel_sp_body[0]=vel_sp_body[0]*vel_sp_max/vel_sp_combination;
+        vel_sp_body[1]=vel_sp_body[1]*vel_sp_max/vel_sp_combination;
     }
+
+
     rotation_yaw(yaw,vel_sp_body,vel_sp_ENU);
     setpoint_raw.type_mask = 1 + 2 /* + 4  +8 + 16 + 32 */+ 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
 	setpoint_raw.coordinate_frame = 1;
@@ -422,7 +426,6 @@ bool stuck_detection(const vector<Pos> &pos ,const vector<Vel> &vel)
     }
     return flag > 3 ;
 }
-/*复制说明，从第九行开始到119行结束*/
 
 /* 点结构体 */
 typedef struct point
@@ -474,7 +477,7 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     barrier_body.y = dist * sin(angle_rad);
 
     // 2. 机体坐标转世界坐标（补全注释要求的逻辑）
-
+    rotation_yaw(yaw, (float[]){(float)barrier_body.x, (float)barrier_body.y}, (float[]){(float)barrier_world.x, (float)barrier_world.y});//修改注释中的问题，先进行旋转
     barrier_world.x = barrier_body.x + current.x;
     barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着
 
@@ -529,3 +532,15 @@ point getCross(segment seg, point point_p, CalcErr *err)
 
     return cross;
 }
+/*
+使用说明
+cal_temporary_waypoint(point target, point current, double dist, double angle, CalcErr *err)
+point target: 目标点（世界坐标系）
+需要看一下结构体的定义，传入一对x,y坐标
+point current: 当前位置（世界坐标系）
+double dist: 障碍点相对机体的距离
+double angle: 障碍点相对机体的角度（度）
+CalcErr *err: 输出错误码（CALC_SUCCESS/CALC_INVALID_PARAM）
+返回值: 避障点（世界坐标系）
+
+*/
