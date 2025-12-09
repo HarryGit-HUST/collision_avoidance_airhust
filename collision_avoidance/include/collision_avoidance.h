@@ -413,11 +413,11 @@ bool stuck_detection(const vector<Pos> &pos ,const vector<Vel> &vel)
     int flag = 0;
     int n1 = pos.size();
     int n2 = vel.size();
-    int n = (n1>n2)? n2 : n1
+    int n = (n1>n2)? n2 : n1//找出最小的，防止指向空值
     for(int i = 0 ; i < n ; i ++){
-        for(int j = i + 1 , j < n ; j ++){
-            float dis = hypot(pos.x[i]-pos.x[j],pos.y[i]-pos.y[j]);
-            if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;
+        for(int j = i + 1 , j < n ; j ++){//遍历任意两个点
+            float dis = hypot(pos.x[i]-pos.x[j],pos.y[i]-pos.y[j]);//算距离
+            if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;//复合判断
         }
     }
     return flag > 3 ;
