@@ -67,6 +67,15 @@ struct Vel
 };
 std::vector<point> current_pos;
 std::vector<Vel> current_vel;
+
+// 错误码定义
+typedef enum
+{
+    CALC_SUCCESS = 0,
+    CALC_DIV_ZERO = 1,     // 除以零错误
+    CALC_INVALID_PARAM = 2 // 参数非法
+} CalcErr;
+point getCross(segment seg, point point_p, CalcErr *err);
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg);
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 {
@@ -423,7 +432,8 @@ bool stuck_detection(const vector<point> &pos ,const vector<Vel> &vel)
     int n2 = vel.size();
     int n = (n1>n2)? n2 : n1//找出最小的，防止指向空值
     for(int i = 0 ; i < n ; i ++){
-        for(int j = i + 1 , j < n ; j ++){//遍历任意两个点
+        for (int j = i + 1; j < n; j++)
+        {                                                          // 遍历任意两个点
             float dis = hypot(pos.x[i]-pos.x[j],pos.y[i]-pos.y[j]);//算距离
             if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;
         }
@@ -432,14 +442,6 @@ bool stuck_detection(const vector<point> &pos ,const vector<Vel> &vel)
 }
 
 
-// 错误码定义
-typedef enum
-{
-    CALC_SUCCESS = 0,
-    CALC_DIV_ZERO = 1,     // 除以零错误
-    CALC_INVALID_PARAM = 2 // 参数非法
-} CalcErr;
-point getCross(segment seg, point point_p, CalcErr *err);
 
 /*
 函数10：计算临时避障点
@@ -495,7 +497,7 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     barrier_body.y = dist * sin(angle_rad);
 
     // 2. 机体坐标转世界坐标（补全注释要求的逻辑）
-    rotation_yaw(yaw, (float[]){(float)barrier_body.x, (float)barrier_body.y}, (float[]){(float)barrier_world.x, (float)barrier_world.y});//修改注释中的问题，先进行旋转
+    //rotation_yaw(yaw, (float[]){(float)barrier_body.x, (float)barrier_body.y}, (float[]){(float)barrier_world.x, (float)barrier_world.y});//修改注释中的问题，先进行旋转
     barrier_world.x = barrier_body.x + current.x;
     barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着,已经修改了
 
