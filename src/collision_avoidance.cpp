@@ -197,7 +197,7 @@ int main(int argc, char **argv)
           while (ros::Time::now() - timer_20 < ros::Duration(20.0))
           {
               if (stuck_detection(current_pos, current_vel)) {
-                  mission_pos_cruise(cross_point.x, cross_point.y, ALTITUDE, 0, err_max);
+                  mission_pos_cruise(cross_point.x, cross_point.y, ALTITUDE, 0, err_max);//这里需要你的点
               }
               else {
                   if (mission_pos_cruise(3, 0, ALTITUDE, 0, err_max)) {
