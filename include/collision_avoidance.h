@@ -503,12 +503,39 @@ point getCross(segment seg, point point_p, CalcErr *err);
 
 /*
 函数10：计算临时避障点
-@param target: 目标点（世界坐标系）
-@param current: 当前位置（世界坐标系）
-@param dist: 障碍点相对机体的距离
-@param angle: 障碍点相对机体的角度（度）
-@param err: 输出错误码（CALC_SUCCESS/CALC_INVALID_PARAM）
+ target: 目标点（世界坐标系）
+ current: 当前位置（世界坐标系）
+ dist: 障碍点相对机体的距离
+ angle: 障碍点相对机体的角度（度）
+ err: 输出错误码（CALC_SUCCESS/CALC_INVALID_PARAM）
 @return: 避障点（世界坐标系）
+*/
+
+/*
+输入格式：
+1.target，目标点，定义代码如下
+point target；
+target.x=<终点的x，类型为double>
+target.y=<终点的y，类型为double>
+2.curent，当前位置，同理
+curent.x=<>
+curent.y=<>
+3.dist，到最近避障点的距离
+4.angle,到最近避障点的角度
+5.err，错误码指针，定义代码如下
+CalcErr err;
+
+示例：
+
+
+
+  point target = {10, 0};
+    point current = {6, 0};
+    CalcErr err;
+    point waypoint = cal_temporary_waypoint(target, current, 5, 36, &err);
+
+
+    
 */
 point cal_temporary_waypoint(point target, point current, double dist, double angle, CalcErr *err)
 {
@@ -537,7 +564,12 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     cross_point = getCross(seg, target, &inner_err);
     *err = inner_err;
 
-    return cross_point;
+    point temp_target;
+    // 4. 计算避障点
+    temp_target.x = 2*cross_point.x -target.x;
+    temp_target.y = 2*cross_point.y -target.y;
+
+    return temp_target;
 }
 
 /*
