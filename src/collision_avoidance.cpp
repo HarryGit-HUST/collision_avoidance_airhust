@@ -137,7 +137,7 @@ int main(int argc, char **argv)
     // 当无人机到达起飞点高度后，悬停3秒后进入任务模式，提高视觉效果
     if (fabs(local_pos.pose.pose.position.z - ALTITUDE) < 0.2)
     {
-      if (ros::Time::now() - last_request > ros::Duration(1.0))
+      if (ros::Time::now() - last_request > ros::Duration(3.0))
       {
         mission_num = 1;
  	      last_request = ros::Time::now();
@@ -219,10 +219,10 @@ int main(int argc, char **argv)
 
       //降落
       case 3:
+        last_request = ros::Time::now();
         if(precision_land())
         {
           mission_num = -1; // 任务结束
-          last_request = ros::Time::now();
         }
         else{
           if(ros::Time::now()-last_request>ros::Duration(20.0)) mission_num = -1;
