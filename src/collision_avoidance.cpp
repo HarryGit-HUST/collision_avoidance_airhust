@@ -203,7 +203,7 @@ int main(int argc, char **argv)
                   mission_pos_cruise(temp_target.x, temp_target.y, ALTITUDE, 0, err_max);//这里需要你的点
               }
               else {
-                  if (mission_pos_cruise(3, 0, ALTITUDE, 0, err_max)) {
+                  if (mission_pos_cruise(target.x, target.y, ALTITUDE, 0, err_max)) {
                       mission_num = 3;
                       initialized = false;
                       break;   // 退出 while
@@ -214,6 +214,7 @@ int main(int argc, char **argv)
               loop_rate.sleep();
           }
           flag = 0;
+		  temp_target.clear();
 
           // 20 秒到了，重置 20 秒计时器
           timer_20 = ros::Time::now();
