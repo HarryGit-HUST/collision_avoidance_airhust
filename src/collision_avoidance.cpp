@@ -58,10 +58,8 @@ int main(int argc, char **argv)
   nh.param<float>("vel_collision_max", vel_collision_max, 0.0);
   nh.param<float>("vel_track_max", vel_track_max, 0.0);
   nh.param<float>("vel_sp_max", vel_sp_max, 0.0);
-  
-  nh.param<float>("mission_cruise_timeout", mission_cruise_timeout, mission_cruise_timeout);//读取普通巡航，第七次
-  nh.param<float>("collision_cruise_timeout", collision_cruise_timeout, collision_cruise_timeout);//读取避障巡航，第七次
-  
+  nh.param<float>("target_x", target.x, 0.0);
+  nh.param<float>("target_y", target.y, 0.0);
   ros::Timer timer = nh.createTimer(ros::Duration(5.0), time_c_b_pos);
   ros::Timer timer = nh.createTimer(ros::Duration(0.5), time_c_b_vel);
   print_param();
@@ -179,12 +177,47 @@ int main(int argc, char **argv)
 
       //世界系前进
       case 2:
-        if (collision_avoidance_mission(2.0, 0.0, ALTITUDE, 0.0 , err_max))
-        {
-          mission_num = 3;
-          last_request = ros::Time::now();
-        }
-        break;
+          static bool initialized = false;
+          static ros::Time timer_20;
+
+          // 初始化一次
+          if (!initialized) {
+              last_request = ros::Time::now();   // 用于总超时 120s
+              timer_20 = ros::Time::now();       // 用于 20s 循环
+              initialized = true;
+          }
+
+          // 120 秒总超时
+          if (ros::Time::now() - last_request > ros::Duration(180.0)) {
+              mission_num = 3;
+              initialized = false;
+              break;    // 退出 switch
+          }
+
+          // 20 秒循环
+          ros::Rate loop_rate(10);
+          while (ros::Time::now() - timer_20 < ros::Duration(20.0))
+          {
+              if (stuck_detection(current_pos, current_vel)) {
+                  point temp_target = cal_temporary_waypoint(point target, point , double distance_c, double angle_C, &err)
+                  mission_pos_cruise(temp_target.x, temp_target.y, ALTITUDE, 0, err_max);//这里需要你的点
+              }
+              else {
+                  if (mission_pos_cruise(3, 0, ALTITUDE, 0, err_max)) {
+                      mission_num = 3;
+                      initialized = false;
+                      break;   // 退出 while
+                  }
+              }
+
+              ros::spinOnce();
+              loop_rate.sleep();
+          }
+          flag = 0;
+
+          // 20 秒到了，重置 20 秒计时器
+          timer_20 = ros::Time::now();
+          break;
 
       //降落
       case 3:
@@ -206,4 +239,3 @@ int main(int argc, char **argv)
   }
   return 0;
 }
-
