@@ -419,7 +419,7 @@ int flag = 0;
 bool stuck_detection(const vector<point> &pos ,const vector<Vel> &vel)
 {
     
-    int n1 = post.size();
+    int n1 = pos.size();
     int n2 = vel.size();
     int n = (n1>n2)? n2 : n1//找出最小的，防止指向空值
     for(int i = 0 ; i < n ; i ++){
