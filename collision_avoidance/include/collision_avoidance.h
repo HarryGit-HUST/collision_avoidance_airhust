@@ -48,7 +48,7 @@ float init_position_y_take_off = 0;
 float init_position_z_take_off = 0;
 float init_yaw_take_off = 0;
 bool flag_init_position = false;
-struct Pos
+struct Pos//无人机当前位置
 {
     float x;
     float y;
@@ -417,7 +417,7 @@ bool stuck_detection(const vector<Pos> &pos ,const vector<Vel> &vel)
     for(int i = 0 ; i < n ; i ++){
         for(int j = i + 1 , j < n ; j ++){//遍历任意两个点
             float dis = hypot(pos.x[i]-pos.x[j],pos.y[i]-pos.y[j]);//算距离
-            if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;//复合判断
+            if (dis <= 0.10&&(vel.x[i]*vel.x[j]<=0||vel.y[i]*vel.y[j]<0)) flag++;
         }
     }
     return flag > 3 ;
