@@ -221,10 +221,13 @@ int main(int argc, char **argv)
 
       //降落
       case 3:
+        last_request = ros::Time::now();
         if(precision_land())
         {
           mission_num = -1; // 任务结束
-          last_request = ros::Time::now();
+        }
+        else{
+          if(ros::Time::now()-last_request>ros::Duration(20.0)) mission_num = -1;
         }
         break;
     }
