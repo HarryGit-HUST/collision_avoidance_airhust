@@ -60,8 +60,8 @@ int main(int argc, char **argv)
   nh.param<float>("vel_sp_max", vel_sp_max, 0.0);
   nh.param<float>("target_x", target.x, 0.0);
   nh.param<float>("target_y", target.y, 0.0);
-  ros::Timer timer = nh.createTimer(ros::Duration(5.0), time_c_b_pos);
-  ros::Timer timer = nh.createTimer(ros::Duration(0.5), time_c_b_vel);
+  ros::Timer timer1 = nh.createTimer(ros::Duration(5.0), time_c_b_pos);
+  ros::Timer timer2 = nh.createTimer(ros::Duration(5.0), time_c_b_vel);
   print_param();
   
 
