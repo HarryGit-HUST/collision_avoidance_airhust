@@ -106,7 +106,6 @@ int main(int argc, char **argv)
 
   // 记录当前时间，并赋值给变量last_request
   ros::Time last_request = ros::Time::now();
-
   while (ros::ok())
   {
     if (current_state.mode != "OFFBOARD" && (ros::Time::now() - last_request > ros::Duration(3.0)))
@@ -175,12 +174,48 @@ int main(int argc, char **argv)
 
       //世界系前进
       case 2:
-        if (collision_avoidance_mission(2.0, 0.0, ALTITUDE, 0.0 , err_max))
-        {
-          mission_num = 3;
-          last_request = ros::Time::now();
-        }
-        break;
+      {
+          static bool initialized = false;
+          static ros::Time timer_20;
+
+          // 初始化一次
+          if (!initialized) {
+              last_request = ros::Time::now();   // 用于总超时 120s
+              timer_20 = ros::Time::now();       // 用于 20s 循环
+              initialized = true;
+          }
+
+          // 120 秒总超时
+          if (ros::Time::now() - last_request > ros::Duration(180.0)) {
+              mission_num = 3;
+              initialized = false;
+              break;    // 退出 switch
+          }
+
+          // 20 秒循环
+          ros::Rate loop_rate(10);
+          while (ros::Time::now() - timer_20 < ros::Duration(20.0))
+          {
+              if (stuck_detection(current_pos, current_vel)) {
+                  mission_pos_cruise(cross_point.x, cross_point.y, ALTITUDE, 0, err_max);
+              }
+              else {
+                  if (mission_pos_cruise(3, 0, ALTITUDE, 0, err_max)) {
+                      mission_num = 3;
+                      initialized = false;
+                      break;   // 退出 while
+                  }
+              }
+
+              ros::spinOnce();
+              loop_rate.sleep();
+          }
+
+          // 20 秒到了，重置 20 秒计时器
+          timer_20 = ros::Time::now();
+
+          break;
+      }
 
       //降落
       case 3:
@@ -188,6 +223,9 @@ int main(int argc, char **argv)
         {
           mission_num = -1; // 任务结束
           last_request = ros::Time::now();
+        }
+        else{
+          if(ros::Time::now()-last_request>ros::Duration(20.0)) mission_num = -1;
         }
         break;
     }

@@ -58,8 +58,8 @@ struct Vel
     float x;
     float y;
 };
-vector<Pos> current_pos;
-vector<Vel> current_vel;
+std::vector<Pos> current_pos;
+std::vector<Vel> current_vel;
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg);
 void local_pos_cb(const nav_msgs::Odometry::ConstPtr &msg)
 {
@@ -408,9 +408,10 @@ bool collision_avoidance_mission(float target_x,float target_y,float target_z,fl
 输入参数：无人机位置，速度
 返回值：true/false表示是否处于震荡状态
 *************************************************************************/
+int flag = 0;
 bool stuck_detection(const vector<Pos> &pos ,const vector<Vel> &vel)
 {
-    int flag = 0;
+    
     int n1 = pos.size();
     int n2 = vel.size();
     int n = (n1>n2)? n2 : n1//找出最小的，防止指向空值
@@ -529,3 +530,11 @@ point getCross(segment seg, point point_p, CalcErr *err)
 
     return cross;
 }
+
+/*
+函数12：飞行状态判断
+返回bool值
+1.检测是否震荡
+2.每隔20秒刷新状态
+3.飞行超过120秒直接降落
+*/
