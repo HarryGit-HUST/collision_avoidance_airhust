@@ -210,6 +210,7 @@ int main(int argc, char **argv)
               ros::spinOnce();
               loop_rate.sleep();
           }
+          flag = 0;
 
           // 20 秒到了，重置 20 秒计时器
           timer_20 = ros::Time::now();
