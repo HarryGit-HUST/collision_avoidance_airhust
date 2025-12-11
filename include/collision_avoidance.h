@@ -508,7 +508,7 @@ CalcErr err;
 
 
 */
-point cal_temporary_waypoint(point target, point current, double dist, double angle, CalcErr *err)
+point cal_temporary_waypoint(point target, point current, float dist, int angle, CalcErr *err)
 {
     point barrier_body, barrier_world, cross_point;
     CalcErr inner_err = CALC_SUCCESS;
@@ -521,7 +521,7 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
     }
 
     // 1. 计算障碍点的机体坐标
-    double angle_rad = angle * M_PI / 180.0; // 角度转弧度
+    double angle_rad =1.0*angle * M_PI / 180.0; // 角度转弧度
     barrier_body.x = dist * cos(angle_rad);
     barrier_body.y = dist * sin(angle_rad);
 
@@ -553,8 +553,8 @@ point cal_temporary_waypoint(point target, point current, double dist, double an
 point getCross(segment seg, point point_p, CalcErr *err)
 {
     point cross = {NAN, NAN};
-    double dx = seg.p1.x - seg.p2.x;
-    double dy = seg.p1.y - seg.p2.y;
+    float dx = seg.p1.x - seg.p2.x;
+    float dy = seg.p1.y - seg.p2.y;
 
     // 防护：基准线段为垂直线（dx=0）
     if (fabs(dx) < 1e-8)
@@ -575,10 +575,10 @@ point getCross(segment seg, point point_p, CalcErr *err)
     }
 
     // 常规情况：斜率不为0且非垂直
-    double slope1 = dy / dx;                            // 基准直线斜率
-    double intercept1 = seg.p1.y - slope1 * seg.p1.x;   // 基准直线截距
-    double slope2 = -1.0 / slope1;                      // 垂直线斜率
-    double intercept2 = point_p.y - slope2 * point_p.x; // 垂直线截距
+    float slope1 = dy / dx;                            // 基准直线斜率
+    float intercept1 = seg.p1.y - slope1 * seg.p1.x;   // 基准直线截距
+    float slope2 = -1.0 / slope1;                      // 垂直线斜率
+    float intercept2 = point_p.y - slope2 * point_p.x; // 垂直线截距
 
     cross.x = (intercept1 - intercept2) / (slope2 - slope1);
     cross.y = slope1 * cross.x + intercept1;
