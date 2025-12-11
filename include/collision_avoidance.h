@@ -116,7 +116,7 @@ void time_c_b_vel(const ros::TimerEvent &event)
 float mission_pos_cruise_last_position_x = 0;
 float mission_pos_cruise_last_position_y = 0;
 // ========== 第七处修改：超时阈值改为可配置变量，设置默认初值 ==========
-float mission_cruise_timeout = 10.0f;     // 普通巡航超时阈值默认值（秒）
+float mission_cruise_timeout = 180.0f;     // 普通巡航超时阈值默认值（秒）
 ros::Time mission_cruise_start_time;      // 巡航任务开始时间
 bool mission_cruise_timeout_flag = false; // 巡航超时标志
 // ========== 修改结束 ==========
@@ -148,7 +148,7 @@ bool mission_pos_cruise(float x, float y, float z, float target_yaw, float error
     setpoint_raw.position.y = y + init_position_y_take_off;
     setpoint_raw.position.z = z + init_position_z_take_off;
     setpoint_raw.yaw = target_yaw;
-    ROS_INFO("now (%.2f,%.2f,%.2f,%.2f) to ( %.2f, %.2f, %.2f, %.2f)", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z, target_yaw * 180.0 / M_PI, x + init_position_x_take_off, y + init_position_y_take_off, z + init_position_z_take_off, target_yaw * 180.0 / M_PI);
+    //ROS_INFO("now (%.2f,%.2f,%.2f,%.2f) to ( %.2f, %.2f, %.2f, %.2f)", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z, target_yaw * 180.0 / M_PI, x + init_position_x_take_off, y + init_position_y_take_off, z + init_position_z_take_off, target_yaw * 180.0 / M_PI);
     if (fabs(local_pos.pose.pose.position.x - x - init_position_x_take_off) < error_max && fabs(local_pos.pose.pose.position.y - y - init_position_y_take_off) < error_max && fabs(local_pos.pose.pose.position.z - z - init_position_z_take_off) < error_max && fabs(yaw - target_yaw) < 0.1)
     {
         ROS_INFO("到达目标点，巡航点任务完成");
@@ -409,13 +409,13 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
             vel_collision[1]=vel_collision[1]*vel_collision_max/vel_collision_combination;
         }
     }
-rotation_yaw(yaw, vel_collision,vel_collision); //避障速度转换到机体坐标系,第二处修改，只是角度，而非坐标，相对于机体的角度
+    rotation_yaw(yaw, vel_collision,vel_collision); //避障速度转换到机体坐标系,第二处修改，只是角度，而非坐标，相对于机体的角度
     vel_sp_body[0] = vel_track[0] + vel_collision[0];
     vel_sp_body[1] = vel_track[1] + vel_collision[1]; // dyx
 
-    ROS_WARN("Velocity Command Body Track: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
-    ROS_WARN("Velocity Command Body Collision: vx: %.2f , vy: %.2f ", vel_collision[0], vel_collision[1]);
-    ROS_WARN("Velocity Command Body after CA: vx: %.2f , vy: %.2f ", vel_sp_body[0], vel_sp_body[1]);
+    //ROS_WARN("Velocity Command Body Track: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
+    //ROS_WARN("Velocity Command Body Collision: vx: %.2f , vy: %.2f ", vel_collision[0], vel_collision[1]);
+    //ROS_WARN("Velocity Command Body after CA: vx: %.2f , vy: %.2f ", vel_sp_body[0], vel_sp_body[1]);
 
     // 找当前位置到目标点的xy差值，如果出现其中一个差值小，另一个差值大，
     // 且过了一会还是保持这个差值就开始从差值入手。
@@ -459,17 +459,19 @@ bool stuck_detection(const vector<point> &pos, const vector<Vel> &vel)
 
     int n1 = pos.size();
     int n2 = vel.size();
-    int n = (n1 > n2) ? n2 : n1 // 找出最小的，防止指向空值
-                for (int i = 0; i < n; i++)
-    {
-        for (int j = i + 1; j < n; j++)
-        {                                                                // 遍历任意两个点
-            float dis = hypot(pos.x[i] - pos.x[j], pos.y[i] - pos.y[j]); // 算距离
-            if (dis <= 0.10 && (vel.x[i] * vel.x[j] <= 0 || vel.y[i] * vel.y[j] < 0))
-                flag++;
+    int n = (n1 > n2) ? n2 : n1; // 找出最小的，防止指向空值
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = i + 1; j < n; j++)
+            {                                                                // 遍历任意两个点
+                float dis = hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y); // 算距离
+                if (dis <= 0.05 && (vel[i].x * vel[j].x < -0.1 || vel[i].y * vel[j].y < -0.1))
+                    flag++;
+            }
+            ROS_INFO("flag = %d",flag);
         }
-    }
-    return flag > 3;
+    
+    return flag > 10;
 }
 
 /*

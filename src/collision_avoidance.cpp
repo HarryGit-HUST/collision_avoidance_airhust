@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
   // 发布无人机多维控制话题
   ros::Publisher mavros_setpoint_pos_pub = nh.advertise<mavros_msgs::PositionTarget>("/mavros/setpoint_raw/local", 100);
-  ros::Subscriber livox_sub = nh.subscribe<livox_ros_driver2::CustomMsg>("/livox/lidar", 10, livox_custom_cb);
+  ros::Subscriber livox_sub = nh.subscribe<livox_ros_driver::CustomMsg>("/livox/lidar", 10, livox_custom_cb);
 
   // 创建服务客户端
   ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
@@ -60,8 +60,8 @@ int main(int argc, char **argv)
   nh.param<float>("vel_sp_max", vel_sp_max, 0.0);
   nh.param<float>("target_x", target.x, 0.0);
   nh.param<float>("target_y", target.y, 0.0);
-  ros::Timer timer1 = nh.createTimer(ros::Duration(5.0), time_c_b_pos);
-  ros::Timer timer2 = nh.createTimer(ros::Duration(5.0), time_c_b_vel);
+  ros::Timer timer1 = nh.createTimer(ros::Duration(2.0), time_c_b_pos);
+  ros::Timer timer2 = nh.createTimer(ros::Duration(2.0), time_c_b_vel);
   print_param();
   
 
@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     switch (mission_num)
     {
       // mission1: 起飞
-      case 1:
+      case 1:{
         if (mission_pos_cruise(0, 0, ALTITUDE, 0, err_max))
         {
           mission_num = 2;
@@ -174,9 +174,10 @@ int main(int argc, char **argv)
           last_request = ros::Time::now();
         }
         break;
+      }
 
       //世界系前进
-      case 2:
+      case 2:{
           static bool initialized = false;
           static ros::Time timer_20;
 
@@ -187,21 +188,23 @@ int main(int argc, char **argv)
               initialized = true;
           }
 
-          // 120 秒总超时
+          // 180 秒总超时
           if (ros::Time::now() - last_request > ros::Duration(180.0)) {
               mission_num = 3;
               initialized = false;
               break;    // 退出 switch
           }
-
+          ROS_INFO("进入避障!!!");
           // 20 秒循环
           ros::Rate loop_rate(10);
-          while (ros::Time::now() - timer_20 < ros::Duration(20.0))
+          while (ros::Time::now() - timer_20 < ros::Duration(10.0))
           {
+              ROS_WARN("开始20秒循环!!!");
               if (stuck_detection(current_pos, current_vel)) {
                 CalcErr err;
-                point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_C, &err);
+                point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_c, &err);
                 timer_20 = ros::Time::now();
+                ROS_WARN("假点!!!");
                 collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max); // 这里需要你的点
               }
               else {
@@ -211,19 +214,20 @@ int main(int argc, char **argv)
                       break;   // 退出 while
                   }
               }
-
+              mavros_setpoint_pos_pub.publish(setpoint_raw);
               ros::spinOnce();
               loop_rate.sleep();
           }
           flag = 0;
-		      temp_target.clear();
+          ROS_INFO("see,out!!!");
 
           // 20 秒到了，重置 20 秒计时器
           timer_20 = ros::Time::now();
           break;
+      }
 
       //降落
-      case 3:
+      case 3:{
         last_request = ros::Time::now();
         if(precision_land())
         {
@@ -233,6 +237,7 @@ int main(int argc, char **argv)
           if(ros::Time::now()-last_request>ros::Duration(20.0)) mission_num = -1;
         }
         break;
+      }
     }
     mavros_setpoint_pos_pub.publish(setpoint_raw);
     ros::spinOnce();
