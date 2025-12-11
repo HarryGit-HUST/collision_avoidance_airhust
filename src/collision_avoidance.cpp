@@ -199,9 +199,10 @@ int main(int argc, char **argv)
           while (ros::Time::now() - timer_20 < ros::Duration(20.0))
           {
               if (stuck_detection(current_pos, current_vel)) {
-                  point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_C, &err)
-                  timer_20 = ros::Time::now();
-                  collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max);//这里需要你的点
+                CalcErr err;
+                point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_C, &err);
+                timer_20 = ros::Time::now();
+                collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max); // 这里需要你的点
               }
               else {
                   if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max)) {
