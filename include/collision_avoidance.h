@@ -50,8 +50,8 @@ float init_yaw_take_off = 0;
 bool flag_init_position = false;
 typedef struct point
 {
-    double x;
-    double y;
+    float x;
+    float y;
 } point;
 point target;
 
