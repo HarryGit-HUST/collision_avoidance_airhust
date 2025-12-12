@@ -4,6 +4,7 @@
 int mission_num = 0;
 float if_debug = 0;
 float err_max = 0.2;
+const float HOVER_DURATION = 10.0f; // 降落悬停时间（秒）
 void print_param()
 {
   std::cout << "=== 控制参数 ===" << std::endl;
