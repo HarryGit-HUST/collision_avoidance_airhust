@@ -219,12 +219,11 @@ int main(int argc, char **argv)
             // 执行假点避障，判断是否到达假点
             if (collision_avoidance_mission(cached_temp_target.x, cached_temp_target.y, ALTITUDE, 0, err_max))
             {
-              ROS_WARN("到达假点，重置状态！");
-              mission_num = 3;               // 切换任务
-              initialized = false;           // 重置初始化标记
-              is_10s_cycle_running = false;  // 重置周期标记
-              temp_target_generated = false; // 重置假点标记
-              break;                         // 退出case2
+              ROS_WARN("到达假点（脱离势能陷阱），返回原始目标点继续避障！");
+              // 仅重置假点标记，不切换mission_num（核心修改）
+              temp_target_generated = false;     // 重置假点标记，下次执行原始目标避障
+              cached_temp_target = {0.0f, 0.0f}; // 清空假点缓存
+              timer_20 = ros::Time::now();       // 重置10秒周期，重新开始判断
             }
           }
           // 场景2：未生成假点 → 先判断震荡状态
