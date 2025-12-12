@@ -148,7 +148,7 @@ bool mission_pos_cruise(float x, float y, float z, float target_yaw, float error
     setpoint_raw.position.y = y + init_position_y_take_off;
     setpoint_raw.position.z = z + init_position_z_take_off;
     setpoint_raw.yaw = target_yaw;
-    //ROS_INFO("now (%.2f,%.2f,%.2f,%.2f) to ( %.2f, %.2f, %.2f, %.2f)", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z, target_yaw * 180.0 / M_PI, x + init_position_x_take_off, y + init_position_y_take_off, z + init_position_z_take_off, target_yaw * 180.0 / M_PI);
+    ROS_INFO("now (%.2f,%.2f,%.2f,%.2f) to ( %.2f, %.2f, %.2f, %.2f)", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z, target_yaw * 180.0 / M_PI, x + init_position_x_take_off, y + init_position_y_take_off, z + init_position_z_take_off, target_yaw * 180.0 / M_PI);
     if (fabs(local_pos.pose.pose.position.x - x - init_position_x_take_off) < error_max && fabs(local_pos.pose.pose.position.y - y - init_position_y_take_off) < error_max && fabs(local_pos.pose.pose.position.z - z - init_position_z_take_off) < error_max && fabs(yaw - target_yaw) < 0.1)
     {
         ROS_INFO("到达目标点，巡航点任务完成");
@@ -347,7 +347,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         flag_collision_avoidance.data = true;
     }
 
-    // 3. 计算追踪速度
+    // 3. 计算追踪速度,shijie
     vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
     vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
@@ -409,7 +409,8 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
             vel_collision[1]=vel_collision[1]*vel_collision_max/vel_collision_combination;
         }
     }
-    rotation_yaw(yaw, vel_collision,vel_collision); //避障速度转换到机体坐标系,第二处修改，只是角度，而非坐标，相对于机体的角度
+    // 5. 速度叠加，得到最终速度指令
+    rotation_yaw(-yaw, vel_track, vel_track);           // 追踪速度转机体坐标系
     vel_sp_body[0] = vel_track[0] + vel_collision[0];
     vel_sp_body[1] = vel_track[1] + vel_collision[1]; // dyx
 
@@ -443,6 +444,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
 
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
+        ROS_INFO("到达目标点（假点/原始目标），避障任务完成");
         return true;
     }
     return false;
