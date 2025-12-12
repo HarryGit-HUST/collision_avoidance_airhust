@@ -62,6 +62,7 @@ int main(int argc, char **argv)
   nh.param<float>("target_y", target.y, 0.0);
   nh.param<float>("mission_cruise_timeout", mission_cruise_timeout, mission_cruise_timeout);       // 读取普通巡航，第七次
   nh.param<float>("collision_cruise_timeout", collision_cruise_timeout, collision_cruise_timeout); // 读取避障巡航，第七次
+  nh.param<float>("final_r", final_r,final_r); // 读取终点限制圆半径
   ros::Timer timer1 = nh.createTimer(ros::Duration(2.0), time_c_b_pos);
   ros::Timer timer2 = nh.createTimer(ros::Duration(2.0), time_c_b_vel);
   print_param();

@@ -504,7 +504,7 @@ bool stuck_detection(const vector<point> &pos, const vector<Vel> &vel)
             {                                                                // 遍历任意两个点
                 float dis = hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y); // 算距离
                 //25.12.12(19.15) 修改震荡判断条件，增加速度反向判断
-                if (dis <= 0.2 && ((vel[i].x * vel[j].x + vel[i].y * vel[j].y )<0) ) // 如果距离小于0.2米且速度反向
+                if (dis <= 0.1 && ((vel[i].x * vel[j].x + vel[i].y * vel[j].y )<0) ) // 如果距离小于0.2米且速度反向
                     flag++;
             }
             ROS_INFO("flag = %d",flag);
@@ -549,6 +549,7 @@ CalcErr err;
 
 
 */
+float final_r = 7.0f; // 终点限制圆半径
 point cal_temporary_waypoint(point target, point current, float dist, int angle, CalcErr *err)
 {
     point barrier_body, barrier_world, cross_point;
@@ -585,7 +586,27 @@ point cal_temporary_waypoint(point target, point current, float dist, int angle,
     temp_target.x = 2 * cross_point.x - target.x;
     temp_target.y = 2 * cross_point.y - target.y;
 
-    return temp_target;
+
+    // ========== 6. 等比缩放至目标点的限制圆内 ==========
+    // 6.1 计算原始避障点到目标点的向量和距离
+    float vec_tx = temp_target.x - target.x; 
+    float vec_ty = temp_target.y - target.y; 
+    float dist_to_target = hypot(vec_tx, vec_ty);   // 原始避障点到目标点的距离
+
+    point temp_target_final;
+    // 6.2 若距离超过限制半径，等比缩放；否则直接保留
+    if (dist_to_target > final_r && dist_to_target > 1e-6)
+    {                                           // 避免除零
+        float scale = final_r / dist_to_target; // 缩放比例
+        temp_target_final.x = target.x + vec_tx * scale;
+        temp_target_final.y = target.y + vec_ty * scale;
+    }
+    else
+    {
+        temp_target_final = temp_target; // 已在圆内，无需缩放
+    }
+
+    return temp_target_final;
 }
 
 /*
