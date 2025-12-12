@@ -465,13 +465,14 @@ bool stuck_detection(const vector<point> &pos, const vector<Vel> &vel)
             for (int j = i + 1; j < n; j++)
             {                                                                // 遍历任意两个点
                 float dis = hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y); // 算距离
-                if (dis <= 0.05 && (vel[i].x * vel[j].x < -0.1 || vel[i].y * vel[j].y < -0.1))
+                //25.12.12(19.15) 修改震荡判断条件，增加速度反向判断
+                if (dis <= 0.1 && ((vel[i].x * vel[j].x + vel[i].y * vel[j].y )< 0))
                     flag++;
             }
             ROS_INFO("flag = %d",flag);
         }
     
-    return flag > 10;
+    return flag > 6; // 如果有超过6对点满足条件，则认为震荡
 }
 
 /*
@@ -528,7 +529,11 @@ point cal_temporary_waypoint(point target, point current, float dist, int angle,
     barrier_body.y = dist * sin(angle_rad);
 
     // 2. 机体坐标转世界坐标（补全注释要求的逻辑）
+    float yaw_rad = yaw;
     // rotation_yaw(yaw, (float[]){(float)barrier_body.x, (float)barrier_body.y}, (float[]){(float)barrier_world.x, (float)barrier_world.y});//修改注释中的问题，先进行旋转
+    //手动进行旋转 25.12.12(18.58)
+    float barrier_world_x = barrier_body.x * cos(yaw_rad) - barrier_body.y * sin(yaw_rad);
+    float barrier_world_y = barrier_body.x * sin(yaw_rad) + barrier_body.y * cos(yaw_rad);
     barrier_world.x = barrier_body.x + current.x;
     barrier_world.y = barrier_body.y + current.y; // 既然机头不转动的话，可以直接相加求解？但是这样就和那个算法的错误一样了，暂且先这么着,已经修改了
 
