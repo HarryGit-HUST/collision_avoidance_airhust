@@ -372,8 +372,14 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     }
 
     // 3. 计算追踪速度,shijie
-    vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
-    vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
+    if(hypot(target_x - local_pos.pose.pose.position.x, target_y - local_pos.pose.pose.position.y) > 0.7){
+        vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
+        vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
+    }
+    else{
+        vel_track[0] = 2 * (target_x - local_pos.pose.pose.position.x);
+        vel_track[1] = 2 * (target_y - local_pos.pose.pose.position.y);
+    }
 
     //速度限幅，第三处修改，改为对总体速度限幅，并比例缩小,强制合速度为max
     float vel_combination=hypot(vel_track[0],vel_track[1]);
@@ -465,6 +471,8 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     ROS_WARN("Velocity Command ENU: vx: %.2f , vy: %.2f ", vel_sp_ENU[0], vel_sp_ENU[1]);
     ROS_WARN("Target Pos: ( %.2f, %.2f, %.2f )", target_x + init_position_x_take_off, target_y + init_position_y_take_off, target_z + init_position_z_take_off);
     ROS_WARN("Current Pos: ( %.2f, %.2f, %.2f )", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z);
+
+    ROS_INFO("fabs_x: %lf, fabs_y %lf", fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off), fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off));
 
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
