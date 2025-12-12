@@ -180,51 +180,74 @@ int main(int argc, char **argv)
       case 2:{
           static bool initialized = false;
           static ros::Time timer_20;
+          static bool is_10s_cycle_running = false; // 新增：标记10秒周期是否运行
 
           // 初始化一次
           if (!initialized) {
               last_request = ros::Time::now();   // 用于总超时 120s
               timer_20 = ros::Time::now();       // 用于 20s 循环
               initialized = true;
+              is_10s_cycle_running = true;
           }
 
           // 180 秒总超时
           if (ros::Time::now() - last_request > ros::Duration(180.0)) {
               mission_num = 3;
               initialized = false;
+              is_10s_cycle_running = false; // 超时后重置周期标记
               break;    // 退出 switch
           }
-          ROS_INFO("进入避障!!!");
-          // 20 秒循环
-          ros::Rate loop_rate(10);
-          while (ros::Time::now() - timer_20 < ros::Duration(10.0))
-          {
-              ROS_WARN("开始20秒循环!!!");
-              if (stuck_detection(current_pos, current_vel)) {
-                CalcErr err;
-                point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_c, &err);
-                timer_20 = ros::Time::now();
-                ROS_WARN("假点!!!");
-                collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max); // 这里需要你的点
-              }
-              else {
-                  if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max)) {
-                      mission_num = 3;
-                      initialized = false;
-                      break;   // 退出 while
-                  }
-              }
-              mavros_setpoint_pos_pub.publish(setpoint_raw);
-              ros::spinOnce();
-              loop_rate.sleep();
-          }
-          flag = 0;
-          ROS_INFO("see,out!!!");
 
-          // 20 秒到了，重置 20 秒计时器
-          timer_20 = ros::Time::now();
+
+          if (is_10s_cycle_running && (ros::Time::now() - timer_20 < ros::Duration(10.0)))
+          {
+            ROS_INFO("进入避障!!!");
+            ROS_WARN("执行10秒周期内的避障逻辑!!!");
+
+
+            // 在10秒周期内执行避障逻辑
+          
+          
+                        if (stuck_detection(current_pos, current_vel)) {
+                          CalcErr err;
+                          point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_c, &err);
+                          timer_20 = ros::Time::now(); // 震荡时重置10秒计时器
+
+                          ROS_WARN("假点!!!");
+                          collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max); // 这里需要你的点
+                        }
+
+                        else {
+                            if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max)) {
+                                mission_num = 3;
+                                initialized = false;
+                                is_10s_cycle_running = false; // 任务完成，重置周期标记
+                                break;                        // 退出case2
+                            }
+                        }
+                        mavros_setpoint_pos_pub.publish(setpoint_raw);
+                        // 移除内部spinOnce()和sleep，改用外层主循环的20Hz执行
+
+                        
+          }
+          else if (is_10s_cycle_running)
+          {
+            // 10秒周期结束，重置状态
+            flag = 0;
+            ROS_INFO("see,out!!!");
+            timer_20 = ros::Time::now();  // 重置20秒计时器（注释笔误）
+            is_10s_cycle_running = false; // 标记周期结束
+          }
+          else
+          {
+
+            // 10秒周期结束后，再次进入时重启周期
+            ROS_INFO("进入10s周期避障!!!");
+            is_10s_cycle_running = true;
+            timer_20 = ros::Time::now();
+          }
           break;
-      }
+        }
 
       //降落
       case 3:{
