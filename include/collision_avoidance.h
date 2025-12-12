@@ -466,7 +466,7 @@ bool stuck_detection(const vector<point> &pos, const vector<Vel> &vel)
             {                                                                // 遍历任意两个点
                 float dis = hypot(pos[i].x - pos[j].x, pos[i].y - pos[j].y); // 算距离
                 //25.12.12(19.15) 修改震荡判断条件，增加速度反向判断
-                if (dis <= 0.1 && ((vel[i].x * vel[j].x + vel[i].y * vel[j].y )< 0))
+                if (dis <= 0.1 && ((vel[i].x * vel[j].x + vel[i].y * vel[j].y )<-0.2))
                     flag++;
             }
             ROS_INFO("flag = %d",flag);

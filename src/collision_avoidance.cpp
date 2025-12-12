@@ -177,77 +177,101 @@ int main(int argc, char **argv)
       }
 
       //世界系前进
-      case 2:{
-          static bool initialized = false;
-          static ros::Time timer_20;
-          static bool is_10s_cycle_running = false; // 新增：标记10秒周期是否运行
+      case 2:
+      {
+        static bool initialized = false;
+        static ros::Time timer_20;
+        static bool is_10s_cycle_running = false;  // 标记10秒周期是否运行
+        static point cached_temp_target;           // 新增：缓存生成的假点（固定不变）
+        static bool temp_target_generated = false; // 新增：标记假点是否已生成
 
-          // 初始化一次
-          if (!initialized) {
-              last_request = ros::Time::now();   // 用于总超时 120s
-              timer_20 = ros::Time::now();       // 用于 20s 循环
-              initialized = true;
-              is_10s_cycle_running = true;
-          }
+        // 初始化一次（含假点相关标记重置）
+        if (!initialized)
+        {
+          last_request = ros::Time::now(); // 总超时计时起点
+          timer_20 = ros::Time::now();     // 10秒周期计时起点
+          initialized = true;
+          is_10s_cycle_running = true;       // 启动10秒周期
+          temp_target_generated = false;     // 初始化时重置假点标记
+          cached_temp_target = {0.0f, 0.0f}; // 初始化假点缓存
+        }
 
-          // 180 秒总超时
-          if (ros::Time::now() - last_request > ros::Duration(180.0)) {
-              mission_num = 3;
-              initialized = false;
-              is_10s_cycle_running = false; // 超时后重置周期标记
-              break;    // 退出 switch
-          }
+        // 180秒总超时：重置所有标记+退出
+        if (ros::Time::now() - last_request > ros::Duration(180.0))
+        {
+          mission_num = 3;
+          initialized = false;
+          is_10s_cycle_running = false;
+          temp_target_generated = false; // 超时后重置假点标记
+          break;                         // 退出 switch
+        }
 
+        // 10秒周期内执行避障逻辑
+        if (is_10s_cycle_running && (ros::Time::now() - timer_20 < ros::Duration(10.0)))
+        {
+          ROS_INFO("进入避障!!!");
+          ROS_WARN("执行10秒周期内的避障逻辑!!!");
 
-          if (is_10s_cycle_running && (ros::Time::now() - timer_20 < ros::Duration(10.0)))
+          // 场景1：已生成假点 → 持续执行该假点的避障任务（不重新计算）
+          if (temp_target_generated)
           {
-            ROS_INFO("进入避障!!!");
-            ROS_WARN("执行10秒周期内的避障逻辑!!!");
-
-
-            // 在10秒周期内执行避障逻辑
-          
-          
-                        if (stuck_detection(current_pos, current_vel)) {
-                          CalcErr err;
-                          point temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_c, &err);
-                          timer_20 = ros::Time::now(); // 震荡时重置10秒计时器
-
-                          ROS_WARN("假点!!!");
-                          collision_avoidance_mission(temp_target.x, temp_target.y, ALTITUDE, 0, err_max); // 这里需要你的点
-                        }
-
-                        else {
-                            if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max)) {
-                                mission_num = 3;
-                                initialized = false;
-                                is_10s_cycle_running = false; // 任务完成，重置周期标记
-                                break;                        // 退出case2
-                            }
-                        }
-                        mavros_setpoint_pos_pub.publish(setpoint_raw);
-                        // 移除内部spinOnce()和sleep，改用外层主循环的20Hz执行
-
-                        
+            ROS_WARN("持续执行假点避障，假点坐标：(%.2f, %.2f)", cached_temp_target.x, cached_temp_target.y);
+            // 执行假点避障，判断是否到达假点
+            if (collision_avoidance_mission(cached_temp_target.x, cached_temp_target.y, ALTITUDE, 0, err_max))
+            {
+              ROS_WARN("到达假点，重置状态！");
+              mission_num = 3;               // 切换任务
+              initialized = false;           // 重置初始化标记
+              is_10s_cycle_running = false;  // 重置周期标记
+              temp_target_generated = false; // 重置假点标记
+              break;                         // 退出case2
+            }
           }
-          else if (is_10s_cycle_running)
-          {
-            // 10秒周期结束，重置状态
-            flag = 0;
-            ROS_INFO("see,out!!!");
-            timer_20 = ros::Time::now();  // 重置20秒计时器（注释笔误）
-            is_10s_cycle_running = false; // 标记周期结束
-          }
+          // 场景2：未生成假点 → 先判断震荡状态
           else
           {
-
-            // 10秒周期结束后，再次进入时重启周期
-            ROS_INFO("进入10s周期避障!!!");
-            is_10s_cycle_running = true;
-            timer_20 = ros::Time::now();
+            if (stuck_detection(current_pos, current_vel))
+            {
+              // 震荡且未生成假点 → 仅计算一次假点并缓存
+              CalcErr err;
+              cached_temp_target = cal_temporary_waypoint(target, current_pos.back(), distance_c, angle_c, &err);
+              temp_target_generated = true; // 标记假点已生成（后续不再重新计算）
+              timer_20 = ros::Time::now();  // 震荡时重置10秒计时器
+              ROS_WARN("检测到震荡，生成假点并固定：(%.2f, %.2f)", cached_temp_target.x, cached_temp_target.y);
+              // 执行首次假点避障
+              collision_avoidance_mission(cached_temp_target.x, cached_temp_target.y, ALTITUDE, 0, err_max);
+            }
+            // 未震荡 → 执行原始目标避障
+            else
+            {
+              if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max))
+              {
+                mission_num = 3;
+                initialized = false;
+                is_10s_cycle_running = false;
+                break; // 退出case2
+              }
+            }
           }
-          break;
+          mavros_setpoint_pos_pub.publish(setpoint_raw);
         }
+        // 10秒周期结束 → 仅重置周期标记（假点标记保留，若已生成则下次继续执行）
+        else if (is_10s_cycle_running)
+        {
+          flag = 0;
+          ROS_INFO("10秒周期结束，重置周期计时器（假点状态保留）!!!");
+          timer_20 = ros::Time::now();
+          is_10s_cycle_running = false;
+        }
+        // 10秒周期结束后重启 → 恢复周期执行（假点标记仍保留）
+        else
+        {
+          ROS_INFO("重启10秒避障周期（假点状态保留）!!!");
+          is_10s_cycle_running = true;
+          timer_20 = ros::Time::now();
+        }
+        break;
+      }
 
       //降落
       case 3:{
