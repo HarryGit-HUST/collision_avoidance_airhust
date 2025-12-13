@@ -335,12 +335,7 @@ float vel_sp_body[2];                    // 总速度
 float vel_sp_ENU[2];                     // ENU下的总速度
 float vel_sp_max;                        // 总速度限幅
 std_msgs::Bool flag_collision_avoidance; // 是否进入避障模式标志位
-// ========== 第七次修改：避障巡航超时阈值==========
-float collision_cruise_timeout = 25.0f;     // 避障巡航超时阈值默认值（秒）
-ros::Time collision_cruise_start_time;      // 避障巡航开始时间
-bool collision_cruise_flag = false;         // 避障巡航初始化标志
-bool collision_cruise_timeout_flag = false; // 避障巡航超时标志
-// ========== 修改结束 ==========
+
 
 void rotation_yaw(float yaw_angle, float input[2], float output[2])
 {
