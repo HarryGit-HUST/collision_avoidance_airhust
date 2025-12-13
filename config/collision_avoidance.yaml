@@ -1,4 +1,4 @@
-err_max : 0.3
+err_max : 0.5
 if_debug : 1
 zero_plane_height : 0.2
 height_threshold : 0.05
@@ -15,10 +15,10 @@ vel_collision_max : 0.60
 vel_track_max : 0.5
 vel_sp_max : 0.55
 
-target_x : 5.0
+target_x : 4.0
 target_y : 0.0
 
 mission_cruise_timeout : 10.0  # 普通巡航超时阈值（秒）
-collision_cruise_timeout : 120.0 # 避障巡航超时阈值（秒）
+collision_cruise_timeout : 60.0 # 避障巡航超时阈值（秒）
 
-final_r : 5.0  # 终点限制圆半径
+final_r : 4.0  # 终点限制圆半径

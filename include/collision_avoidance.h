@@ -473,15 +473,22 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     ROS_WARN("Current Pos: ( %.2f, %.2f, %.2f )", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z);
 
     //ROS_INFO("fabs_x: %lf, fabs_y %lf", fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off), fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off));
-
+    
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
         ROS_INFO("到达目标点（假点/原始目标），避障任务完成");
+        last_request = ros::Time::now();
         // ========== 第七次：避障巡航到达目标点重置超时标志 ==========
         collision_cruise_flag = false;
         collision_cruise_timeout_flag = false;
         // ========== 新增结束 ==========
-        return true;
+        if (ros::Time::now() - last_request > ros::Duration(4.0))
+        {
+            
+            last_request = ros::Time::now();
+            return true;
+        }
+        
     }
     return false;
 }
