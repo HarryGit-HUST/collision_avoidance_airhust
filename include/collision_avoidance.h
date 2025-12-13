@@ -12,6 +12,7 @@
 #include <std_msgs/Bool.h>
 #include <mavros_msgs/PositionTarget.h>
 #include <cmath>
+#include <math.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
 #include <mavros_msgs/CommandLong.h>
@@ -303,11 +304,13 @@ void livox_custom_cb(const livox_ros_driver::CustomMsg::ConstPtr &livox_msg)
 void satfunc(float *data1, float *data2, float Max)
 {
     // 1. 计算合速度
-    float datasum = hypot(*data1, *data2);
+    float datasum = sqrt((*data1) * (*data1) + (*data2) * (*data2));
+    ROS_WARN("DATASUM,   %.2f", datasum);
     // 2. 判断是否超过最大值
     const float eps = 1e-6; // 浮点数精度容差
     if (fabs(datasum) > Max + eps && datasum > eps)
     {
+        ROS_WARN("whether achieve");
         float scale = Max / datasum; 
         *data1 *= scale;             
         *data2 *= scale;            
