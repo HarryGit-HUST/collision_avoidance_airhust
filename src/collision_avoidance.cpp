@@ -250,6 +250,7 @@ int main(int argc, char **argv)
               if (collision_avoidance_mission(target.x, target.y, ALTITUDE, 0, err_max))
               {
                 mission_num = 3;
+                ROS_INFO("原始目标!!!(%.2f, %.2f)", target.x, target.y);
                 initialized = false;
                 is_10s_cycle_running = false;
                 break; // 退出case2
