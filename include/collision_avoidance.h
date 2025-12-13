@@ -307,6 +307,17 @@ float satfunc(float data, float Max)
     else
         return data;
 }
+/************************************************************************
+函数 7.1: satfunc
+数据判断函数
+*************************************************************************/
+float satfuncwhether(float data, float Max)
+{
+    if (abs(data) > Max)
+        return 1
+    else
+        return 0;
+}
 
 /************************************************************************
 函数 8: collision_avoidance 避障函数
@@ -357,12 +368,12 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
     vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
-    // 速度限幅，第三处修改，改为对总体速度限幅，并比例缩小,强制合速度为max
+    // 速度限幅，第三处修改，改为对vel_track_max限幅，并比例缩小,强制合速度为max
     float vel_combination = hypot(vel_track[0], vel_track[1]);
-    if (vel_combination > vel_sp_max)
+    if (satfuncwhether(vel_combination, vel_track_max) == 1)
     {
-        vel_track[0] = vel_track[0] * vel_sp_max / vel_combination;
-        vel_track[1] = vel_track[1] * vel_sp_max / vel_combination;
+        vel_track[0] = vel_track[0] * vel_track_max / vel_combination;
+        vel_track[1] = vel_track[1] * vel_track_max / vel_combination;
     }
     vel_collision[0] = 0;
     vel_collision[1] = 0;
@@ -422,7 +433,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         }
         // 避障速度限幅，第五处修改，对避障速度限幅同第三处
         float vel_collision_combination = hypot(vel_collision[0], vel_collision[1]);
-        if (vel_collision_combination > vel_collision_max)
+        if (satfuncwhether(vel_collision_combination, vel_collision_max) == 1)
         {
             vel_collision[0] = vel_collision[0] * vel_collision_max / vel_collision_combination;
             vel_collision[1] = vel_collision[1] * vel_collision_max / vel_collision_combination;
@@ -442,7 +453,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
 
     // 第六处修改，总体速度限幅,同第三处
     float vel_sp_combination = hypot(vel_sp_body[0], vel_sp_body[1]);
-    if (vel_sp_combination > vel_sp_max)
+    if (satfuncwhether(vel_sp_combination, vel_sp_max) == 1)
     {
         vel_sp_body[0] = vel_sp_body[0] * vel_sp_max / vel_sp_combination;
         vel_sp_body[1] = vel_sp_body[1] * vel_sp_max / vel_sp_combination;
