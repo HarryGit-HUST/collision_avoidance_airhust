@@ -333,6 +333,7 @@ float collision_cruise_timeout = 25.0f;     // 避障巡航超时阈值默认值
 ros::Time collision_cruise_start_time;      // 避障巡航开始时间
 bool collision_cruise_flag = false;         // 避障巡航初始化标志
 bool collision_cruise_timeout_flag = false; // 避障巡航超时标志
+ros::Time last_request;
 // ========== 修改结束 ==========
 
 void rotation_yaw(float yaw_angle, float input[2], float output[2])
@@ -473,7 +474,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     ROS_WARN("Current Pos: ( %.2f, %.2f, %.2f )", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z);
 
     //ROS_INFO("fabs_x: %lf, fabs_y %lf", fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off), fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off));
-    ros::Time last_request = ros::Time::now();
+    
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
         static bool first_time = true;
@@ -489,10 +490,11 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         collision_cruise_flag = false;
         collision_cruise_timeout_flag = false;
         // ========== 新增结束 ==========
-         if (ros::Time::now() - last_request > ros::Duration(4.0))
+         if (ros::Time::now() - last_request > ros::Duration(1.0))
         {
 
             last_request = ros::Time::now();
+            first_time = true;
             return true;
         }
         
