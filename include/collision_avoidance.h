@@ -357,10 +357,12 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
     vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
-    // 速度限幅
-    for (int i = 0; i < 2; i++)
+    // 速度限幅，第三处修改，改为对总体速度限幅，并比例缩小,强制合速度为max
+    float vel_combination = hypot(vel_track[0], vel_track[1]);
+    if (vel_combination > vel_sp_max)
     {
-        vel_track[i] = satfunc(vel_track[i], vel_track_max);
+        vel_track[0] = vel_track[0] * vel_sp_max / vel_combination;
+        vel_track[1] = vel_track[1] * vel_sp_max / vel_combination;
     }
     vel_collision[0] = 0;
     vel_collision[1] = 0;
@@ -418,10 +420,12 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         {
             vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
         }
-        // 避障速度限幅
-        for (int i = 0; i < 2; i++)
+        // 避障速度限幅，第五处修改，对避障速度限幅同第三处
+        float vel_collision_combination = hypot(vel_collision[0], vel_collision[1]);
+        if (vel_collision_combination > vel_collision_max)
         {
-            vel_collision[i] = satfunc(vel_collision[i], vel_collision_max);
+            vel_collision[0] = vel_collision[0] * vel_collision_max / vel_collision_combination;
+            vel_collision[1] = vel_collision[1] * vel_collision_max / vel_collision_combination;
         }
     }
 
@@ -436,9 +440,12 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     // 且过了一会还是保持这个差值就开始从差值入手。
     // 比如，y方向接近0，但x还差很多，但x方向有障碍，这个时候按discx cy的大小，缓解y的难题。
 
-    for (int i = 0; i < 2; i++)
+    // 第六处修改，总体速度限幅,同第三处
+    float vel_sp_combination = hypot(vel_sp_body[0], vel_sp_body[1]);
+    if (vel_sp_combination > vel_sp_max)
     {
-        vel_sp_body[i] = satfunc(vel_sp_body[i], vel_sp_max);
+        vel_sp_body[0] = vel_sp_body[0] * vel_sp_max / vel_sp_combination;
+        vel_sp_body[1] = vel_sp_body[1] * vel_sp_max / vel_sp_combination;
     }
     rotation_yaw(yaw, vel_sp_body, vel_sp_ENU);
     setpoint_raw.type_mask = 1 + 2 /* + 4  +8 + 16 + 32 */ + 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
