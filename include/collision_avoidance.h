@@ -473,7 +473,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     ROS_WARN("Current Pos: ( %.2f, %.2f, %.2f )", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z);
 
     //ROS_INFO("fabs_x: %lf, fabs_y %lf", fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off), fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off));
-    
+    ros::Time last_request = ros::Time::now();
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
         ROS_INFO("到达目标点（假点/原始目标），避障任务完成");
