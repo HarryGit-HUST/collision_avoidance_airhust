@@ -300,23 +300,19 @@ void livox_custom_cb(const livox_ros_driver::CustomMsg::ConstPtr &livox_msg)
 函数 7: satfunc
 数据饱和函数，限制数据在±Max范围内
 *************************************************************************/
-float satfunc(float data, float Max)
+void satfunc(float *data1, float *data2, float Max)
 {
-    if (abs(data) > Max)
-        return (data > 0) ? Max : -Max;
-    else
-        return data;
-}
-/************************************************************************
-函数 7.1: satfunc
-数据判断函数
-*************************************************************************/
-float satfuncwhether(float data, float Max)
-{
-    if (abs(data) > Max)
-        return 1
-    else
-        return 0;
+    // 1. 计算合速度
+    float datasum = hypot(*data1, *data2);
+    // 2. 判断是否超过最大值
+    const float eps = 1e-6; // 浮点数精度容差
+    if (fabs(datasum) > Max + eps && datasum > eps)
+    {
+        float scale = Max / datasum; 
+        *data1 *= scale;             
+        *data2 *= scale;            
+    }
+    
 }
 
 /************************************************************************
@@ -369,12 +365,9 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
     // 速度限幅，第三处修改，改为对vel_track_max限幅，并比例缩小,强制合速度为max
-    float vel_combination = hypot(vel_track[0], vel_track[1]);
-    if (satfuncwhether(vel_combination, vel_track_max) == 1)
-    {
-        vel_track[0] = vel_track[0] * vel_track_max / vel_combination;
-        vel_track[1] = vel_track[1] * vel_track_max / vel_combination;
-    }
+    
+    satfunc(&vel_track[0],&vel_track[1], vel_track_max);
+    
     vel_collision[0] = 0;
     vel_collision[1] = 0;
     ROS_WARN("Velocity Command Body before CA: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
@@ -432,12 +425,7 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
             vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
         }
         // 避障速度限幅，第五处修改，对避障速度限幅同第三处
-        float vel_collision_combination = hypot(vel_collision[0], vel_collision[1]);
-        if (satfuncwhether(vel_collision_combination, vel_collision_max) == 1)
-        {
-            vel_collision[0] = vel_collision[0] * vel_collision_max / vel_collision_combination;
-            vel_collision[1] = vel_collision[1] * vel_collision_max / vel_collision_combination;
-        }
+        satfunc(&vel_collision[0], &vel_collision[1], vel_collision_max);
     }
 
     vel_sp_body[0] = vel_track[0] + vel_collision[0];
@@ -452,12 +440,8 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     // 比如，y方向接近0，但x还差很多，但x方向有障碍，这个时候按discx cy的大小，缓解y的难题。
 
     // 第六处修改，总体速度限幅,同第三处
-    float vel_sp_combination = hypot(vel_sp_body[0], vel_sp_body[1]);
-    if (satfuncwhether(vel_sp_combination, vel_sp_max) == 1)
-    {
-        vel_sp_body[0] = vel_sp_body[0] * vel_sp_max / vel_sp_combination;
-        vel_sp_body[1] = vel_sp_body[1] * vel_sp_max / vel_sp_combination;
-    }
+   satfunc(&vel_sp_body[0], &vel_sp_body[1], vel_sp_max);
+    // 5. 速度指令发布
     rotation_yaw(yaw, vel_sp_body, vel_sp_ENU);
     setpoint_raw.type_mask = 1 + 2 /* + 4  +8 + 16 + 32 */ + 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
     setpoint_raw.coordinate_frame = 1;
