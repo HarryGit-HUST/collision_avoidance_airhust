@@ -11,7 +11,7 @@ R_inside : 0.7
 p_R : 3.0 
 p_r : 8.0
 p_xy : 0.2
-vel_collision_max : 0.5
+vel_collision_max : 0.65
 vel_track_max : 0.5
 vel_sp_max : 0.55
 
