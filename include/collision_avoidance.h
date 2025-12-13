@@ -328,7 +328,12 @@ float vel_sp_body[2];                    // 总速度
 float vel_sp_ENU[2];                     // ENU下的总速度
 float vel_sp_max;                        // 总速度限幅
 std_msgs::Bool flag_collision_avoidance; // 是否进入避障模式标志位
-
+// ========== 第七次修改：避障巡航超时阈值==========
+float collision_cruise_timeout = 25.0f;     // 避障巡航超时阈值默认值（秒）
+ros::Time collision_cruise_start_time;      // 避障巡航开始时间
+bool collision_cruise_flag = false;         // 避障巡航初始化标志
+bool collision_cruise_timeout_flag = false; // 避障巡航超时标志
+// ========== 修改结束 ==========
 
 void rotation_yaw(float yaw_angle, float input[2], float output[2])
 {
@@ -338,6 +343,24 @@ void rotation_yaw(float yaw_angle, float input[2], float output[2])
 
 bool collision_avoidance_mission(float target_x, float target_y, float target_z, float target_yaw, float err_max)
 {
+    // ========== 第七次：避障巡航首次进入初始化计时 ==========
+    if (!collision_cruise_flag)
+    {
+        collision_cruise_start_time = ros::Time::now();
+        collision_cruise_timeout_flag = false;
+        collision_cruise_flag = true;
+        ROS_INFO("[避障巡航] 任务启动，超时阈值%.1f秒", collision_cruise_timeout);
+    }
+    // ========== 第七次：避障巡航超时判断逻辑 ==========
+    ros::Duration elapsed_time = ros::Time::now() - collision_cruise_start_time;
+    if (elapsed_time.toSec() > collision_cruise_timeout && !collision_cruise_timeout_flag)
+    {
+        ROS_WARN("[避障巡航超时] 已耗时%.1f秒（阈值%.1f秒），强制切换下一个任务！", elapsed_time.toSec(), collision_cruise_timeout);
+        collision_cruise_timeout_flag = true;
+        collision_cruise_flag = false; // 重置任务标志
+        return true;                   // 返回true表示任务完成（超时切换）
+    }
+    // ========== 新增结束 ==========
     // 2. 根据最小距离判断：是否启用避障策略
     if (distance_c >= R_outside)
     {
@@ -449,6 +472,11 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
 
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
+        ROS_INFO("到达目标点（假点/原始目标），避障任务完成");
+        // ========== 第七次：避障巡航到达目标点重置超时标志 ==========
+        collision_cruise_flag = false;
+        collision_cruise_timeout_flag = false;
+        // ========== 新增结束 ==========
         return true;
     }
     return false;
