@@ -328,12 +328,7 @@ float vel_sp_body[2];                    // 总速度
 float vel_sp_ENU[2];                     // ENU下的总速度
 float vel_sp_max;                        // 总速度限幅
 std_msgs::Bool flag_collision_avoidance; // 是否进入避障模式标志位
-// ========== 第七次修改：避障巡航超时阈值==========
-float collision_cruise_timeout = 25.0f;     // 避障巡航超时阈值默认值（秒）
-ros::Time collision_cruise_start_time;      // 避障巡航开始时间
-bool collision_cruise_flag = false;         // 避障巡航初始化标志
-bool collision_cruise_timeout_flag = false; // 避障巡航超时标志
-// ========== 修改结束 ==========
+
 
 void rotation_yaw(float yaw_angle, float input[2], float output[2])
 {
@@ -343,24 +338,6 @@ void rotation_yaw(float yaw_angle, float input[2], float output[2])
 
 bool collision_avoidance_mission(float target_x, float target_y, float target_z, float target_yaw, float err_max)
 {
-    // ========== 第七次：避障巡航首次进入初始化计时 ==========
-    if (!collision_cruise_flag)
-    {
-        collision_cruise_start_time = ros::Time::now();
-        collision_cruise_timeout_flag = false;
-        collision_cruise_flag = true;
-        ROS_INFO("[避障巡航] 任务启动，超时阈值%.1f秒", collision_cruise_timeout);
-    }
-    // ========== 第七次：避障巡航超时判断逻辑 ==========
-    ros::Duration elapsed_time = ros::Time::now() - collision_cruise_start_time;
-    if (elapsed_time.toSec() > collision_cruise_timeout && !collision_cruise_timeout_flag)
-    {
-        ROS_WARN("[避障巡航超时] 已耗时%.1f秒（阈值%.1f秒），强制切换下一个任务！", elapsed_time.toSec(), collision_cruise_timeout);
-        collision_cruise_timeout_flag = true;
-        collision_cruise_flag = false; // 重置任务标志
-        return true;                   // 返回true表示任务完成（超时切换）
-    }
-    // ========== 新增结束 ==========
     // 2. 根据最小距离判断：是否启用避障策略
     if (distance_c >= R_outside)
     {
@@ -371,22 +348,14 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         flag_collision_avoidance.data = true;
     }
 
-    // 3. 计算追踪速度,shijie
-    if(hypot(target_x - local_pos.pose.pose.position.x, target_y - local_pos.pose.pose.position.y) > 0.7){
-        vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
-        vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
-    }
-    else{
-        vel_track[0] = 2 * (target_x - local_pos.pose.pose.position.x);
-        vel_track[1] = 2 * (target_y - local_pos.pose.pose.position.y);
-    }
+    // 3. 计算追踪速度
+    vel_track[0] = p_xy * (target_x - local_pos.pose.pose.position.x);
+    vel_track[1] = p_xy * (target_y - local_pos.pose.pose.position.y);
 
-    //速度限幅，第三处修改，改为对总体速度限幅，并比例缩小,强制合速度为max
-    float vel_combination=hypot(vel_track[0],vel_track[1]);
-    if(vel_combination>vel_sp_max)
+    // 速度限幅
+    for (int i = 0; i < 2; i++)
     {
-        vel_track[0]=vel_track[0]*vel_sp_max/vel_combination;
-        vel_track[1]=vel_track[1]*vel_sp_max/vel_combination;
+        vel_track[i] = satfunc(vel_track[i], vel_track_max);
     }
     vel_collision[0] = 0;
     vel_collision[1] = 0;
@@ -427,39 +396,45 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
         }
         ROS_WARN("Force F_c: %.2f ", F_c);
 
-        //第一处修改，修改为更美观的写法！！！！！！！！
-        vel_collision[0] = vel_collision[0] - F_c * distance_cx / distance_c;
-        vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
-      
-         //避障速度限幅，第五处修改，对避障速度限幅同第三处
-        float vel_collision_combination=hypot(vel_collision[0],vel_collision[1]);
-        if(vel_collision_combination>vel_collision_max)
+        if (distance_cx > 0)
         {
-            vel_collision[0]=vel_collision[0]*vel_collision_max/vel_collision_combination;
-            vel_collision[1]=vel_collision[1]*vel_collision_max/vel_collision_combination;
+            vel_collision[0] = vel_collision[0] - F_c * distance_cx / distance_c;
+        }
+        else
+        {
+            vel_collision[0] = vel_collision[0] - F_c * distance_cx / distance_c;
+        }
+
+        if (distance_cy > 0)
+        {
+            vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
+        }
+        else
+        {
+            vel_collision[1] = vel_collision[1] - F_c * distance_cy / distance_c;
+        }
+        // 避障速度限幅
+        for (int i = 0; i < 2; i++)
+        {
+            vel_collision[i] = satfunc(vel_collision[i], vel_collision_max);
         }
     }
-    // 5. 速度叠加，得到最终速度指令
-    rotation_yaw(-yaw, vel_track, vel_track);           // 追踪速度转机体坐标系
+
     vel_sp_body[0] = vel_track[0] + vel_collision[0];
     vel_sp_body[1] = vel_track[1] + vel_collision[1]; // dyx
 
-    //ROS_WARN("Velocity Command Body Track: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
-    //ROS_WARN("Velocity Command Body Collision: vx: %.2f , vy: %.2f ", vel_collision[0], vel_collision[1]);
-    //ROS_WARN("Velocity Command Body after CA: vx: %.2f , vy: %.2f ", vel_sp_body[0], vel_sp_body[1]);
+    ROS_WARN("Velocity Command Body Track: vx: %.2f , vy: %.2f ", vel_track[0], vel_track[1]);
+    ROS_WARN("Velocity Command Body Collision: vx: %.2f , vy: %.2f ", vel_collision[0], vel_collision[1]);
+    ROS_WARN("Velocity Command Body after CA: vx: %.2f , vy: %.2f ", vel_sp_body[0], vel_sp_body[1]);
 
     // 找当前位置到目标点的xy差值，如果出现其中一个差值小，另一个差值大，
     // 且过了一会还是保持这个差值就开始从差值入手。
     // 比如，y方向接近0，但x还差很多，但x方向有障碍，这个时候按discx cy的大小，缓解y的难题。
 
-    //第六处修改，总体速度限幅,同第三处
-    float vel_sp_combination=hypot(vel_sp_body[0],vel_sp_body[1]);
-    if(vel_sp_combination>vel_sp_max)
+    for (int i = 0; i < 2; i++)
     {
-        vel_sp_body[0]=vel_sp_body[0]*vel_sp_max/vel_sp_combination;
-        vel_sp_body[1]=vel_sp_body[1]*vel_sp_max/vel_sp_combination;
+        vel_sp_body[i] = satfunc(vel_sp_body[i], vel_sp_max);
     }
-
     rotation_yaw(yaw, vel_sp_body, vel_sp_ENU);
     setpoint_raw.type_mask = 1 + 2 /* + 4  +8 + 16 + 32 */ + 64 + 128 + 256 + 512 /*+ 1024 */ + 2048;
     setpoint_raw.coordinate_frame = 1;
@@ -472,15 +447,8 @@ bool collision_avoidance_mission(float target_x, float target_y, float target_z,
     ROS_WARN("Target Pos: ( %.2f, %.2f, %.2f )", target_x + init_position_x_take_off, target_y + init_position_y_take_off, target_z + init_position_z_take_off);
     ROS_WARN("Current Pos: ( %.2f, %.2f, %.2f )", local_pos.pose.pose.position.x, local_pos.pose.pose.position.y, local_pos.pose.pose.position.z);
 
-    ROS_INFO("fabs_x: %lf, fabs_y %lf", fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off), fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off));
-
     if (fabs(local_pos.pose.pose.position.x - target_x - init_position_x_take_off) < err_max && fabs(local_pos.pose.pose.position.y - target_y - init_position_y_take_off) < err_max && fabs(local_pos.pose.pose.position.z - target_z - init_position_z_take_off) < err_max && fabs(yaw - target_yaw) < 0.1)
     {
-        ROS_INFO("到达目标点（假点/原始目标），避障任务完成");
-        // ========== 第七次：避障巡航到达目标点重置超时标志 ==========
-        collision_cruise_flag = false;
-        collision_cruise_timeout_flag = false;
-        // ========== 新增结束 ==========
         return true;
     }
     return false;
