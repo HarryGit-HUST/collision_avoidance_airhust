@@ -19,6 +19,6 @@ target_x : 4.0
 target_y : 0.0
 
 mission_cruise_timeout : 10.0  # 普通巡航超时阈值（秒）
-collision_cruise_timeout : 60.0 # 避障巡航超时阈值（秒）
+collision_cruise_timeout : 30.0 # 避障巡航超时阈值（秒）
 
 final_r : 4.0  # 终点限制圆半径
